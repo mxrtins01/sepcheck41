@@ -1,0 +1,12 @@
+[package]
+name = "sepcheck41"
+version = "0.1.0"
+edition = "2021"
+authors = ["Oyin <bridgemedia001@gmail.com>"]
+description = "SEP-41 Soroban Token Behavioral Conformance and Interoperability Test Suite"
+license = "Apache-2.0 OR MIT"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
