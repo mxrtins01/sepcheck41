@@ -29,6 +29,9 @@ pub enum TokenError {
 
     #[error("Negative transfer amount {0} disallowed")]
     NegativeAmount(i128),
+
+    #[error("Supply invariant violation: total supply {expected} does not equal sum of balances {actual}")]
+    SupplyInvariantViolation { expected: i128, actual: i128 },
 }
 
 pub struct TokenRunner;
@@ -142,5 +145,100 @@ impl TokenRunner {
         state.allowances.get_mut(&key).unwrap().amount -= amount;
 
         Ok(())
+    }
+
+    pub fn burn(
+        state: &mut MockTokenState,
+        from: &str,
+        amount: i128,
+        authorized: bool,
+    ) -> Result<(), TokenError> {
+        if amount < 0 {
+            return Err(TokenError::NegativeAmount(amount));
+        }
+        if !authorized {
+            return Err(TokenError::Unauthorized(from.to_string()));
+        }
+
+        let from_bal = state.balances.get(from).copied().unwrap_or(0);
+        if from_bal < amount {
+            return Err(TokenError::InsufficientBalance {
+                account: from.to_string(),
+                requested: amount,
+                available: from_bal,
+            });
+        }
+
+        *state.balances.entry(from.to_string()).or_insert(0) -= amount;
+        state.total_supply -= amount;
+        Ok(())
+    }
+
+    pub fn burn_from(
+        state: &mut MockTokenState,
+        spender: &str,
+        from: &str,
+        amount: i128,
+        authorized: bool,
+    ) -> Result<(), TokenError> {
+        if amount < 0 {
+            return Err(TokenError::NegativeAmount(amount));
+        }
+        if !authorized {
+            return Err(TokenError::Unauthorized(spender.to_string()));
+        }
+
+        let key = (from.to_string(), spender.to_string());
+        let allowance = state.allowances.get(&key).cloned().ok_or_else(|| {
+            TokenError::InsufficientAllowance {
+                spender: spender.to_string(),
+                from: from.to_string(),
+                requested: amount,
+                allowed: 0,
+            }
+        })?;
+
+        if allowance.expiration_ledger < state.current_ledger {
+            return Err(TokenError::AllowanceExpired {
+                expiration: allowance.expiration_ledger,
+                current: state.current_ledger,
+            });
+        }
+
+        if allowance.amount < amount {
+            return Err(TokenError::InsufficientAllowance {
+                spender: spender.to_string(),
+                from: from.to_string(),
+                requested: amount,
+                allowed: allowance.amount,
+            });
+        }
+
+        let from_bal = state.balances.get(from).copied().unwrap_or(0);
+        if from_bal < amount {
+            return Err(TokenError::InsufficientBalance {
+                account: from.to_string(),
+                requested: amount,
+                available: from_bal,
+            });
+        }
+
+        *state.balances.entry(from.to_string()).or_insert(0) -= amount;
+        state.total_supply -= amount;
+        state.allowances.get_mut(&key).unwrap().amount -= amount;
+
+        Ok(())
+    }
+
+    pub fn verify_supply_invariant(state: &MockTokenState) -> Result<(), TokenError> {
+        let sum = state.total_balance_sum();
+        if sum != state.total_supply {
+            Err(TokenError::SupplyInvariantViolation {
+                expected: state.total_supply,
+                actual: sum,
+            })
+        } else {
+            Ok(())
+        }
     }
 }
