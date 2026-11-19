@@ -113,3 +113,15 @@ fn test_burn_from_with_allowance() {
         .expect_err("Over allowance must fail");
     assert!(matches!(err, TokenError::InsufficientAllowance { .. }));
 }
+
+#[test]
+fn test_allowance_invariants() {
+    let mut state = MockTokenState::new("Native Token", "NTK", 7);
+    TokenRunner::approve(&mut state, "ALICE", "SPENDER", 500_000, 1500, true).unwrap();
+    TokenRunner::verify_allowance_invariants(&state).expect("Valid allowance invariant");
+
+    // Manually corrupt allowance to negative
+    state.allowances.get_mut(&("ALICE".to_string(), "SPENDER".to_string())).unwrap().amount = -50;
+    let err = TokenRunner::verify_allowance_invariants(&state).expect_err("Negative allowance must fail");
+    assert!(matches!(err, TokenError::NegativeAllowance { .. }));
+}
