@@ -18,6 +18,7 @@ pub struct AllowanceEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct MockTokenState {
     pub metadata: Option<TokenMetadata>,
+    pub total_supply: i128,
     pub balances: std::collections::HashMap<String, i128>,
     pub allowances: std::collections::HashMap<(String, String), AllowanceEntry>,
     pub current_ledger: u32,
@@ -31,6 +32,7 @@ impl MockTokenState {
                 symbol: symbol.into(),
                 decimal,
             }),
+            total_supply: 0,
             balances: std::collections::HashMap::new(),
             allowances: std::collections::HashMap::new(),
             current_ledger: 1000,
@@ -38,6 +40,13 @@ impl MockTokenState {
     }
 
     pub fn mint(&mut self, account: impl Into<String>, amount: i128) {
-        *self.balances.entry(account.into()).or_insert(0) += amount;
+        if amount > 0 {
+            *self.balances.entry(account.into()).or_insert(0) += amount;
+            self.total_supply += amount;
+        }
+    }
+
+    pub fn total_balance_sum(&self) -> i128 {
+        self.balances.values().copied().sum()
     }
 }
