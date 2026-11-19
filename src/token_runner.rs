@@ -32,6 +32,9 @@ pub enum TokenError {
 
     #[error("Supply invariant violation: total supply {expected} does not equal sum of balances {actual}")]
     SupplyInvariantViolation { expected: i128, actual: i128 },
+
+    #[error("Allowance invariant violation: negative allowance for ({from}, {spender}): {amount}")]
+    NegativeAllowance { from: String, spender: String, amount: i128 },
 }
 
 pub struct TokenRunner;
@@ -62,6 +65,14 @@ impl TokenRunner {
 
         *state.balances.entry(from.to_string()).or_insert(0) -= amount;
         *state.balances.entry(to.to_string()).or_insert(0) += amount;
+        state.emitted_events.push(crate::events::EmittedTokenEvent {
+            ledger: state.current_ledger,
+            event: crate::events::TokenEventType::Transfer {
+                from: from.to_string(),
+                to: to.to_string(),
+                amount,
+            },
+        });
         Ok(())
     }
 
@@ -86,6 +97,15 @@ impl TokenRunner {
                 expiration_ledger,
             },
         );
+        state.emitted_events.push(crate::events::EmittedTokenEvent {
+            ledger: state.current_ledger,
+            event: crate::events::TokenEventType::Approve {
+                from: from.to_string(),
+                spender: spender.to_string(),
+                amount,
+                expiration_ledger,
+            },
+        });
         Ok(())
     }
 
@@ -171,6 +191,13 @@ impl TokenRunner {
 
         *state.balances.entry(from.to_string()).or_insert(0) -= amount;
         state.total_supply -= amount;
+        state.emitted_events.push(crate::events::EmittedTokenEvent {
+            ledger: state.current_ledger,
+            event: crate::events::TokenEventType::Burn {
+                from: from.to_string(),
+                amount,
+            },
+        });
         Ok(())
     }
 
@@ -240,5 +267,31 @@ impl TokenRunner {
         } else {
             Ok(())
         }
+    }
+
+    pub fn batch_transfer(
+        state: &mut MockTokenState,
+        transfers: &[(&str, &str, i128)],
+        authorized: bool,
+    ) -> Result<(), TokenError> {
+        let mut snapshot = state.clone();
+        for &(from, to, amount) in transfers {
+            Self::transfer(&mut snapshot, from, to, amount, authorized)?;
+        }
+        *state = snapshot;
+        Ok(())
+    }
+
+    pub fn verify_allowance_invariants(state: &MockTokenState) -> Result<(), TokenError> {
+        for ((from, spender), entry) in &state.allowances {
+            if entry.amount < 0 {
+                return Err(TokenError::NegativeAllowance {
+                    from: from.clone(),
+                    spender: spender.clone(),
+                    amount: entry.amount,
+                });
+            }
+        }
+        Ok(())
     }
 }
