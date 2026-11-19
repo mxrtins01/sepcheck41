@@ -21,6 +21,7 @@ pub struct MockTokenState {
     pub total_supply: i128,
     pub balances: std::collections::HashMap<String, i128>,
     pub allowances: std::collections::HashMap<(String, String), AllowanceEntry>,
+    pub emitted_events: Vec<crate::events::EmittedTokenEvent>,
     pub current_ledger: u32,
 }
 
@@ -35,6 +36,7 @@ impl MockTokenState {
             total_supply: 0,
             balances: std::collections::HashMap::new(),
             allowances: std::collections::HashMap::new(),
+            emitted_events: Vec::new(),
             current_ledger: 1000,
         }
     }
