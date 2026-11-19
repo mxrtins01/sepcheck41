@@ -269,6 +269,18 @@ impl TokenRunner {
         }
     }
 
+    pub fn decimals(state: &MockTokenState) -> u32 {
+        state.metadata.as_ref().map(|m| m.decimal).unwrap_or(7)
+    }
+
+    pub fn name(state: &MockTokenState) -> String {
+        state.metadata.as_ref().map(|m| m.name.clone()).unwrap_or_default()
+    }
+
+    pub fn symbol(state: &MockTokenState) -> String {
+        state.metadata.as_ref().map(|m| m.symbol.clone()).unwrap_or_default()
+    }
+
     pub fn batch_transfer(
         state: &mut MockTokenState,
         transfers: &[(&str, &str, i128)],
