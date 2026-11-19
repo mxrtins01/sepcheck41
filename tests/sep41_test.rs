@@ -67,3 +67,49 @@ fn test_expired_allowance_rejection() {
 
     assert!(matches!(err, TokenError::AllowanceExpired { .. }));
 }
+
+#[test]
+fn test_burn_and_supply_invariant() {
+    let mut state = MockTokenState::new("Native Token", "NTK", 7);
+    state.mint("ALICE", 1_000_000);
+    assert_eq!(state.total_supply, 1_000_000);
+    TokenRunner::verify_supply_invariant(&state).expect("Initial supply invariant valid");
+
+    // Authorized burn
+    TokenRunner::burn(&mut state, "ALICE", 400_000, true).expect("Burn must succeed");
+    assert_eq!(*state.balances.get("ALICE").unwrap(), 600_000);
+    assert_eq!(state.total_supply, 600_000);
+    TokenRunner::verify_supply_invariant(&state).expect("Post-burn supply invariant valid");
+
+    // Over-burn
+    let err = TokenRunner::burn(&mut state, "ALICE", 700_000, true).expect_err("Over-burn must fail");
+    assert!(matches!(err, TokenError::InsufficientBalance { .. }));
+
+    // Unauthorized burn
+    let unauth_err = TokenRunner::burn(&mut state, "ALICE", 100_000, false).expect_err("Unauth burn fails");
+    assert!(matches!(unauth_err, TokenError::Unauthorized(..)));
+}
+
+#[test]
+fn test_burn_from_with_allowance() {
+    let mut state = MockTokenState::new("Native Token", "NTK", 7);
+    state.mint("ALICE", 1_000_000);
+
+    TokenRunner::approve(&mut state, "ALICE", "SPENDER", 500_000, 1500, true)
+        .expect("Approve must succeed");
+
+    // Spender burns 200,000 of Alice's tokens
+    TokenRunner::burn_from(&mut state, "SPENDER", "ALICE", 200_000, true)
+        .expect("Burn_from must succeed");
+
+    assert_eq!(*state.balances.get("ALICE").unwrap(), 800_000);
+    assert_eq!(state.total_supply, 800_000);
+    let allowance = state.allowances.get(&("ALICE".to_string(), "SPENDER".to_string())).unwrap();
+    assert_eq!(allowance.amount, 300_000);
+    TokenRunner::verify_supply_invariant(&state).expect("Post burn_from invariant valid");
+
+    // Over allowance burn_from
+    let err = TokenRunner::burn_from(&mut state, "SPENDER", "ALICE", 400_000, true)
+        .expect_err("Over allowance must fail");
+    assert!(matches!(err, TokenError::InsufficientAllowance { .. }));
+}
