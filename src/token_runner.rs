@@ -294,6 +294,7 @@ impl TokenRunner {
         Ok(())
     }
 
+    /// Verifies all registered allowances remain strictly non-negative.
     pub fn verify_allowance_invariants(state: &MockTokenState) -> Result<(), TokenError> {
         for ((from, spender), entry) in &state.allowances {
             if entry.amount < 0 {
