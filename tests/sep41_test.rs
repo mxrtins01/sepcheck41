@@ -125,3 +125,21 @@ fn test_allowance_invariants() {
     let err = TokenRunner::verify_allowance_invariants(&state).expect_err("Negative allowance must fail");
     assert!(matches!(err, TokenError::NegativeAllowance { .. }));
 }
+
+#[test]
+fn test_clawback_operation_and_events() {
+    let mut state = MockTokenState::new("Clawback Token", "CLAW", 7);
+    state.mint("USER_A", 1_000_0000000);
+
+    TokenRunner::clawback(&mut state, "ADMIN_A", "USER_A", 400_0000000, true)
+        .expect("Clawback should succeed");
+
+    assert_eq!(state.balances.get("USER_A"), Some(&600_0000000));
+    assert_eq!(state.total_supply, 600_0000000);
+
+    assert!(state.emitted_events.iter().any(|e| matches!(
+        &e.event,
+        sepcheck41::TokenEventType::Clawback { admin, from, amount }
+            if admin == "ADMIN_A" && from == "USER_A" && *amount == 400_0000000
+    )));
+}
