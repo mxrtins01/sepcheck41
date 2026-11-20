@@ -361,4 +361,16 @@ impl TokenRunner {
         }
         Ok(())
     }
+
+    /// Verifies that total_supply matches the sum of all account balances.
+    pub fn verify_supply_invariants(state: &MockTokenState) -> Result<(), TokenError> {
+        let actual_sum = state.total_balance_sum();
+        if state.total_supply != actual_sum {
+            return Err(TokenError::SupplyInvariantViolation {
+                expected: state.total_supply,
+                actual: actual_sum,
+            });
+        }
+        Ok(())
+    }
 }
