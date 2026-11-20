@@ -294,6 +294,44 @@ impl TokenRunner {
         Ok(())
     }
 
+    pub fn clawback(
+        state: &mut MockTokenState,
+        admin: &str,
+        from: &str,
+        amount: i128,
+        is_admin_authorized: bool,
+    ) -> Result<(), TokenError> {
+        if amount < 0 {
+            return Err(TokenError::NegativeAmount(amount));
+        }
+        if !is_admin_authorized {
+            return Err(TokenError::Unauthorized(admin.to_string()));
+        }
+
+        let from_bal = state.balances.get(from).copied().unwrap_or(0);
+        if from_bal < amount {
+            return Err(TokenError::InsufficientBalance {
+                account: from.to_string(),
+                requested: amount,
+                available: from_bal,
+            });
+        }
+
+        state.balances.insert(from.to_string(), from_bal - amount);
+        state.total_supply -= amount;
+
+        state.emitted_events.push(crate::events::EmittedTokenEvent {
+            ledger: state.current_ledger,
+            event: crate::events::TokenEventType::Clawback {
+                admin: admin.to_string(),
+                from: from.to_string(),
+                amount,
+            },
+        });
+
+        Ok(())
+    }
+
     /// Verifies all registered allowances remain strictly non-negative.
     pub fn verify_allowance_invariants(state: &MockTokenState) -> Result<(), TokenError> {
         for ((from, spender), entry) in &state.allowances {

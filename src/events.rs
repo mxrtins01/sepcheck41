@@ -17,6 +17,11 @@ pub enum TokenEventType {
         from: String,
         amount: i128,
     },
+    Clawback {
+        admin: String,
+        from: String,
+        amount: i128,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
