@@ -332,6 +332,22 @@ impl TokenRunner {
         Ok(())
     }
 
+    pub fn reset_allowance(
+        state: &mut MockTokenState,
+        from: &str,
+        spender: &str,
+        authorized: bool,
+    ) -> Result<(), TokenError> {
+        if !authorized {
+            return Err(TokenError::Unauthorized(from.to_string()));
+        }
+        let key = (from.to_string(), spender.to_string());
+        if let Some(entry) = state.allowances.get_mut(&key) {
+            entry.amount = 0;
+        }
+        Ok(())
+    }
+
     /// Verifies all registered allowances remain strictly non-negative.
     pub fn verify_allowance_invariants(state: &MockTokenState) -> Result<(), TokenError> {
         for ((from, spender), entry) in &state.allowances {
