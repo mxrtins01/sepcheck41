@@ -172,3 +172,14 @@ fn test_metadata_scaling_helpers() {
     assert_eq!(meta.format_scaled(1_5000000), "1.5000000");
     assert_eq!(meta.format_scaled(42), "0.0000042");
 }
+
+#[test]
+fn test_clawback_unauthorized_rejection_and_supply_invariant() {
+    let mut state = MockTokenState::new("Native Token", "NTK", 7);
+    state.mint("USER_X", 500);
+
+    let err = TokenRunner::clawback(&mut state, "FAKE_ADMIN", "USER_X", 100, false).unwrap_err();
+    assert!(matches!(err, TokenError::Unauthorized(..)));
+
+    TokenRunner::verify_supply_invariants(&state).expect("Supply invariant should hold");
+}
