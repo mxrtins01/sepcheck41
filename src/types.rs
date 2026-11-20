@@ -7,6 +7,15 @@ pub struct TokenMetadata {
     pub symbol: String,
 }
 
+impl TokenMetadata {
+    pub fn format_scaled(&self, raw_amount: i128) -> String {
+        let factor = 10i128.pow(self.decimal);
+        let whole = raw_amount / factor;
+        let frac = (raw_amount % factor).abs();
+        format!("{}.{:0width$}", whole, frac, width = self.decimal as usize)
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct AllowanceEntry {
     pub from: String,
