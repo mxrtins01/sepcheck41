@@ -159,3 +159,16 @@ fn test_zero_allowance_reset() {
     let err = TokenRunner::reset_allowance(&mut state, "ALICE", "SPENDER", false).unwrap_err();
     assert!(matches!(err, TokenError::Unauthorized(..)));
 }
+
+#[test]
+fn test_metadata_scaling_helpers() {
+    let meta = sepcheck41::TokenMetadata {
+        decimal: 7,
+        name: "USD Coin".into(),
+        symbol: "USDC".into(),
+    };
+
+    assert_eq!(meta.format_scaled(10_0000000), "10.0000000");
+    assert_eq!(meta.format_scaled(1_5000000), "1.5000000");
+    assert_eq!(meta.format_scaled(42), "0.0000042");
+}
