@@ -143,3 +143,19 @@ fn test_clawback_operation_and_events() {
             if admin == "ADMIN_A" && from == "USER_A" && *amount == 400_0000000
     )));
 }
+
+#[test]
+fn test_zero_allowance_reset() {
+    let mut state = MockTokenState::new("Native Token", "NTK", 7);
+    TokenRunner::approve(&mut state, "ALICE", "SPENDER", 500_000, 1500, true).unwrap();
+
+    let entry = state.allowances.get(&("ALICE".to_string(), "SPENDER".to_string())).unwrap();
+    assert_eq!(entry.amount, 500_000);
+
+    TokenRunner::reset_allowance(&mut state, "ALICE", "SPENDER", true).unwrap();
+    let reset_entry = state.allowances.get(&("ALICE".to_string(), "SPENDER".to_string())).unwrap();
+    assert_eq!(reset_entry.amount, 0);
+
+    let err = TokenRunner::reset_allowance(&mut state, "ALICE", "SPENDER", false).unwrap_err();
+    assert!(matches!(err, TokenError::Unauthorized(..)));
+}
