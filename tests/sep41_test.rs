@@ -183,3 +183,20 @@ fn test_clawback_unauthorized_rejection_and_supply_invariant() {
 
     TokenRunner::verify_supply_invariants(&state).expect("Supply invariant should hold");
 }
+
+#[test]
+fn test_mutant_token_supply_corruption_is_detected() {
+    let mut state = MockTokenState::new("Mutant Token", "MUT", 7);
+    state.mint("ALICE", 1_000);
+    state.total_supply += 100; // Deliberate mutant: supply changes without a balance update.
+
+    let error = TokenRunner::verify_supply_invariants(&state)
+        .expect_err("A supply mutation without matching balances must be rejected");
+    assert!(matches!(
+        error,
+        TokenError::SupplyInvariantViolation {
+            expected: 1_100,
+            actual: 1_000
+        }
+    ));
+}
